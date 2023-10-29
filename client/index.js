@@ -15,6 +15,19 @@ const signer = popup.querySelector(".signer");
 const time = popup.querySelector(".time");
 const producer = popup.querySelector(".producer");
 
+// Function to upload a file
+async function uploadFile(file, name) {
+    const formData = new FormData();
+    formData.append('file', file, name);
+
+    const response = await fetch(`http://localhost:8000/upload`, {
+        method: 'POST',
+        body: formData,
+    });
+
+    return await response.json();
+}
+
 // Add an image to the gallery
 function addGalleryItem(data) {
     const galleryItem = document.createElement('div');
@@ -38,75 +51,75 @@ function addGalleryItem(data) {
 
         const report = data.report;
 
-        // get the active manifest
-        const manifest = report.manifests[report.active_manifest];
+        // Check if report and manifests are defined
+        if (report && report.manifests && report.active_manifest !== undefined) {
+            // get the active manifest
+            const manifest = report.manifests[report.active_manifest];
 
-        // show the title of the manifest, or the name of the image
-        title.textContent = manifest.title || data.name;
+            console.log("Manifest:", manifest);
 
-        // show the issuer and time of the signature
-        const issuer = manifest.signature_info?.issuer || "";
-        signer.innerHTML = `Signed By: ${issuer}`;
+            // show the title of the manifest, or the name of the image
+            const title = document.querySelector(".title");
+            title.textContent = manifest.title || data.name;
 
-        const sign_time = manifest.signature_info?.time;
-        // convert ISO-8601 sign_time to local time
-        const date = sign_time ? new Date(sign_time).toLocaleString() : "";
-        time.innerHTML = sign_time ? `Signed On: ${date}` : "";
+            // show the issuer and time of the signature
+            const signer = document.querySelector(".signer");
+            const issuer = manifest.signature_info?.issuer || "";
+            signer.innerHTML = `Signed By: ${issuer}`;
 
-        // truncate the claim generator at first space for first token
-        // and then replace underscores and forward slash with spaces
-        const generator = manifest.claim_generator?.split(" ")[0].replace(/[_/]/g, " ")
-        producer.innerHTML = `Produced With: ${generator}`;
+            const time = document.querySelector(".time");
+            const sign_time = manifest.signature_info?.time;
+            // convert ISO-8601 sign_time to local time
+            const date = sign_time ? new Date(sign_time).toLocaleString() : "";
+            time.innerHTML = sign_time ? `Signed On: ${date}` : "";
 
-        // Position the popup and show it
-        popup.style.display = "block";
-        popup.style.top = `${rect.top + window.scrollY}px`;
-        const popupWidth = popup.getBoundingClientRect().width;
-        popup.style.left = `${rect.left > popupWidth ? rect.left - popupWidth : rect.left + rect.width}px`;
+            // truncate the claim generator at first space for first token
+            // and then replace underscores and forward slash with spaces
+            const generator = manifest.claim_generator?.split(" ")[0].replace(/[_/]/g, " ");
+            console.log("Generator:", generator);
 
+            producer.innerHTML = `Produced With: ${generator}`;
+
+            // Position the popup and show it
+            popup.style.display = "block";
+            popup.style.position = "absolute"; // Ensure the position is absolute
+            popup.style.top = `${rect.top + window.scrollY}px`;
+            popup.style.left = `${rect.left}px`; // Adjust the left position as needed
+        } else {
+            console.log("Manifest or report is undefined.");
+        }
     });
-    
+
     badge.addEventListener("mouseleave", function() {
         // hide the popup
+        const popup = document.querySelector(".popup");
         popup.style.display = "none";
     });
 }
-    
+
+ 
 // Example of directly sending files from change event (without using a form)
 document.getElementById('files').addEventListener('change', (event) => {
-
     // reset the container
-    gallery.innerHTML = ""; 
+    gallery.innerHTML = "";
 
     // upload all the selected files to sign, and show the modified images
-    for (file of event.target.files) {
-        let name = file.name;
-        const reader = new FileReader();
+    for (const file of event.target.files) {
+        const formData = new FormData();
+        formData.append('file', file, file.name);
 
-        // post the file to our server
-        reader.addEventListener('load', async (event) => {
-            try {
-                let url = `http://localhost:8000/upload?name=${name}`
-                const response = await fetch(url, {
-                    method: 'POST',
-                    headers: {
-                        "Content-Type": file.type,
-                    },
-                    body: event.target.result
-                });
+        fetch('http://localhost:8000/upload', {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+		// Parse the report string into a JSON object
+                data.report = JSON.parse(data.report);
 
-                let body = await response.json()
-                
-                // add the returned image data to the gallery
-                addGalleryItem(body);
-            }
-            catch (err) {
-                console.log(err)
-            }
-        });
-
-        reader.readAsArrayBuffer(file);
+		console.log("Data from server:", data); // Check the data being received from the server
+		addGalleryItem(data);
+	})
+        .catch(error => console.error('Error:', error));
     }
-
 });
-
