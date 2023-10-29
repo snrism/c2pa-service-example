@@ -1,6 +1,6 @@
 # c2patool Python service example 
 
-This repository is forked from [Node.js](https://github.com/contentauth/c2pa-service-example) and has the Python equivalent server example. The functionalityy remains the same and allows users to upload images and add a C2PA manifest to each image.
+This repository is forked from [Node.js](https://github.com/contentauth/c2pa-service-example) implementation and has the Python equivalent server implementation. The functionalityy remains the same and allows users to upload images and add a C2PA manifest to each image.
 
 ## Install and build
 
